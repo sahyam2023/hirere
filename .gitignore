@@ -1,2 +1,4 @@
 *.pyc
 /pgdata
+/__pycache__/
+.env
