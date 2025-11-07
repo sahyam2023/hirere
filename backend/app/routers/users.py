@@ -1,17 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.core.database import SessionLocal
+from app.core.database import get_db
 from app.models.user import User
 from app.core.security import get_current_user
 
 router = APIRouter()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @router.post("/users")
 def create_user(name: str, email: str, password: str, db: Session = Depends(get_db)):
