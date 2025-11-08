@@ -8,3 +8,10 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-jose[cryptography]
 python-multipart
+tensorflow==2.10.0
+mediapipe==0.10.9
+protobuf==3.19.6
+deepface==0.0.93
+retina-face==0.0.17
+opencv-python-headless==4.5.5.62
+numpy==1.23.5

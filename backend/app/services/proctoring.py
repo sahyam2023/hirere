@@ -1,4 +1,8 @@
+import cv2
+import numpy as np
+from deepface import DeepFace
 from app.core.config import settings
+from typing import Union
 
 def analyze_face(image_path: str, baseline_embedding: list) -> str:
     """
@@ -6,11 +10,6 @@ def analyze_face(image_path: str, baseline_embedding: list) -> str:
     and returns the event type.
     """
     try:
-        import cv2
-        import numpy as np
-        from deepface import DeepFace
-        from deepface.commons import functions
-
         # Face detection using Mediapipe
         face_objs = DeepFace.extract_faces(img_path=image_path, detector_backend='mediapipe', enforce_detection=False)
 
@@ -24,7 +23,7 @@ def analyze_face(image_path: str, baseline_embedding: list) -> str:
         current_embedding = DeepFace.represent(img_path=image_path, model_name='VGG-Face', enforce_detection=False)[0]['embedding']
 
         # Compare with the baseline embedding
-        distance = functions.findCosineDistance(np.array(current_embedding), np.array(baseline_embedding))
+        distance = np.linalg.norm(np.array(current_embedding) - np.array(baseline_embedding))
 
         if distance < settings.face_match_threshold:
             return "face_match"
@@ -35,12 +34,11 @@ def analyze_face(image_path: str, baseline_embedding: list) -> str:
         print(f"Error during face analysis: {e}")
         return "error"
 
-def generate_embedding(image_path: str) -> list | None:
+def generate_embedding(image_path: str) -> Union[list, None]:
     """
     Generates a face embedding from an image.
     """
     try:
-        from deepface import DeepFace
         embedding = DeepFace.represent(img_path=image_path, model_name='VGG-Face', enforce_detection=True)[0]['embedding']
         return embedding
     except Exception as e:
