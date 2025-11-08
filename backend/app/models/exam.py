@@ -33,6 +33,7 @@ class Submission(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     exam_id = Column(Integer, ForeignKey('exams.id'), nullable=False)
+    session_id = Column(String, index=True, nullable=True)
     answers = Column(JSON, nullable=False)
     score = Column(Integer, nullable=False)
     submitted_at = Column(DateTime, default=datetime.datetime.utcnow)

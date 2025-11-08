@@ -2,6 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.models.user import Base
 from app.models.exam import Exam, Question, Submission
+from app.models.proctor import ProctorLog, UserFace
 from .config import settings
 
 engine = create_engine(settings.database_url)
