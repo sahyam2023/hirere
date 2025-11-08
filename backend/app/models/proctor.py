@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
-from .user import Base
+from app.core.database import Base
 import datetime
 
 class ProctorLog(Base):
@@ -25,4 +25,4 @@ class UserFace(Base):
     image_path = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-    user = relationship("User")
+    user = relationship("User", back_populates="face_embedding")

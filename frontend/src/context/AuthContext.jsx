@@ -19,45 +19,40 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
-      setUser(JSON.parse(userData));
+    if (token) {
       setIsAuthenticated(true);
+      fetchUser().finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
+
+  const fetchUser = async () => {
+    try {
+      const response = await authAPI.me();
+      setUser(response.data);
+      localStorage.setItem('user', JSON.stringify(response.data));
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+      logout();
+    }
+  };
 
   const login = async (credentials) => {
     try {
       const response = await authAPI.login(credentials);
-      const { access_token, user: userData } = response.data;
+      const { access_token } = response.data;
       
       localStorage.setItem('token', access_token);
-      localStorage.setItem('user', JSON.stringify(userData));
       
-      setUser(userData);
+      await fetchUser();
       setIsAuthenticated(true);
       
       toast.success('Welcome back!');
       return { success: true };
     } catch (error) {
-      // Fallback for demo - simulate successful login
-      const mockUser = {
-        id: 1,
-        name: credentials.email.split('@')[0],
-        email: credentials.email,
-        role: credentials.email.includes('admin') ? 'admin' : 'student'
-      };
-      
-      localStorage.setItem('token', 'demo-token');
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      
-      setUser(mockUser);
-      setIsAuthenticated(true);
-      
-      toast.success('Welcome back!');
-      return { success: true };
+      console.error('Login failed:', error);
+      throw error;
     }
   };
 
@@ -88,6 +83,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    fetchUser,
   };
 
   return (

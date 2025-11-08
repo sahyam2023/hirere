@@ -14,8 +14,9 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 Base.metadata.create_all(bind=engine)
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def client():
+    Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
 
     # Create admin user
@@ -148,3 +149,54 @@ def test_submit_exam(client, user_token, admin_token):
     data = response.json()
     assert data["msg"] == "submitted"
     assert data["score"] == 5
+
+def test_update_exam(client, admin_token):
+    # First create an exam
+    exam_response = client.post(
+        "/api/exams",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={
+            "title": "Update Test Exam",
+            "description": "An exam to test updating.",
+            "duration_minutes": 20,
+            "questions": []
+        }
+    )
+    exam_id = exam_response.json()["id"]
+
+    response = client.put(
+        f"/api/exams/{exam_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={
+            "title": "Updated Exam Title",
+            "description": "Updated description.",
+            "duration_minutes": 25,
+            "is_active": True
+        }
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == "Updated Exam Title"
+    assert data["duration_minutes"] == 25
+    assert data["is_active"] is True
+
+def test_delete_exam(client, admin_token):
+    # First create an exam
+    exam_response = client.post(
+        "/api/exams",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={
+            "title": "Delete Test Exam",
+            "description": "An exam to test deletion.",
+            "duration_minutes": 10,
+            "questions": []
+        }
+    )
+    exam_id = exam_response.json()["id"]
+
+    response = client.delete(f"/api/exams/{exam_id}", headers={"Authorization": f"Bearer {admin_token}"})
+    assert response.status_code == 204
+
+    # Verify it's deleted
+    get_response = client.get(f"/api/exams/{exam_id}", headers={"Authorization": f"Bearer {admin_token}"})
+    assert get_response.status_code == 404

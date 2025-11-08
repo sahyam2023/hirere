@@ -10,6 +10,7 @@ class UserSchema(BaseModel):
     name: str
     email: str
     role: str
+    is_face_registered: bool
 
     class Config:
         orm_mode = True

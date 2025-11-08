@@ -58,14 +58,22 @@ export const authAPI = {
     });
   },
   register: (userData) => api.post('/register', userData),
-  me: () => Promise.resolve({ data: { name: 'Dummy User', email: 'dummy@example.com' } }),
+  me: () => api.get('/users/me'),
 };
 
 export const examAPI = {
-  getExams: () => Promise.resolve({ data: [] }),
+  getExams: () => api.get('/exams'),
   getExam: (id) => api.get(`/exams/${id}`),
   submitExam: (examId, answers) => api.post(`/exams/submit`, { exam_id: examId, answers }),
   createExam: (examData) => api.post('/exams', examData),
+  updateExam: (id, examData) => api.put(`/exams/${id}`, examData),
+  deleteExam: (id) => api.delete(`/exams/${id}`),
+  getDashboardStats: () => api.get('/exams/admin/stats'),
+  getAllSubmissions: () => api.get('/submissions/admin/all'),
+  getQuestions: () => api.get('/questions'),
+  createQuestion: (questionData) => api.post('/questions', questionData),
+  updateQuestion: (id, questionData) => api.put(`/questions/${id}`, questionData),
+  deleteQuestion: (id) => api.delete(`/questions/${id}`),
 };
 
 export const faceAPI = {
