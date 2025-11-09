@@ -18,10 +18,6 @@ def verify_password(plain, hashed):
     return pwd_context.verify(plain, hashed)
 
 def hash_password(password: str) -> str:
-    # Ensure string, encode, truncate to 72 bytes for bcrypt
-    if not isinstance(password, str):
-        password = str(password)
-    password = password.encode("utf-8")[:72].decode("utf-8", "ignore")
     return pwd_context.hash(password)
 
 def create_access_token(data: dict):
