@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from .routers import health, users, auth, exams, proctor, submissions, questions
 from app.core.database import init_db, engine
+from app.models.assignment import ExamAssignment
 from sqlalchemy import inspect, text
 from fastapi.middleware.cors import CORSMiddleware
 

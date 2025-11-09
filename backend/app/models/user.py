@@ -13,6 +13,7 @@ class User(Base):
     role = Column(String, default="user", nullable=False)
 
     face_embedding = relationship("UserFace", uselist=False, back_populates="user")
+    assignments = relationship("ExamAssignment", back_populates="user")
 
     is_face_registered = column_property(
         exists().where(UserFace.user_id == id)

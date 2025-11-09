@@ -50,3 +50,6 @@ class ExamUpdateSchema(BaseModel):
     description: str
     duration_minutes: int
     is_active: bool
+
+class AssignmentSchema(BaseModel):
+    user_id: int

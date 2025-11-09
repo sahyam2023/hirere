@@ -4,12 +4,13 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
 from app.models.exam import Exam, Question, Submission
-from app.schemas.exam_schema import AdminStatsSchema, ExamUpdateSchema, ExamResponseSchema, ExamSchema, SubmissionSchema, ExamDetailSchema
+from app.models.assignment import ExamAssignment
+from app.schemas.exam_schema import AdminStatsSchema, ExamUpdateSchema, ExamResponseSchema, ExamSchema, SubmissionSchema, ExamDetailSchema, AssignmentSchema
 from typing import List
 
-router = APIRouter(tags=["exams"])
+router = APIRouter(prefix="/exams", tags=["exams"])
 
-@router.post("/exams", response_model=ExamResponseSchema)
+@router.post("/", response_model=ExamResponseSchema)
 def create_exam(exam_data: ExamSchema, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Only admins can create exams")
@@ -36,6 +37,14 @@ def create_exam(exam_data: ExamSchema, db: Session = Depends(get_db), current_us
     db.commit()
 
     return exam
+
+@router.get("/", response_model=List[ExamResponseSchema])
+def get_assigned_exams(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role == "admin":
+        exams = db.query(Exam).all()
+    else:
+        exams = [assignment.exam for assignment in current_user.assignments]
+    return exams
 
 @router.get("/{exam_id}", response_model=ExamDetailSchema)
 def get_exam(exam_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -73,7 +82,7 @@ def get_my_submissions(db: Session = Depends(get_db), current_user: User = Depen
     submissions = db.query(Submission).filter(Submission.user_id == current_user.id).all()
     return submissions
 
-@router.put("/exams/{exam_id}", response_model=ExamResponseSchema)
+@router.put("/{exam_id}", response_model=ExamResponseSchema)
 def update_exam(exam_id: int, exam_data: ExamUpdateSchema, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Only admins can update exams")
@@ -90,7 +99,7 @@ def update_exam(exam_id: int, exam_data: ExamUpdateSchema, db: Session = Depends
     db.refresh(exam)
     return exam
 
-@router.delete("/exams/{exam_id}", status_code=204)
+@router.delete("/{exam_id}", status_code=204)
 def delete_exam(exam_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Only admins can delete exams")
@@ -101,4 +110,22 @@ def delete_exam(exam_id: int, db: Session = Depends(get_db), current_user: User 
 
     db.delete(exam)
     db.commit()
-    return {"ok": True}
+    return
+
+@router.post("/{exam_id}/assign")
+def assign_exam(exam_id: int, assignment_data: AssignmentSchema, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can assign exams")
+
+    exam = db.query(Exam).filter(Exam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    user = db.query(User).filter(User.id == assignment_data.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    assignment = ExamAssignment(exam_id=exam_id, user_id=assignment_data.user_id)
+    db.add(assignment)
+    db.commit()
+    return {"message": "Exam assigned successfully"}
