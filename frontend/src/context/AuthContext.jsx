@@ -19,10 +19,20 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) {
-      setIsAuthenticated(true);
-      fetchUser().finally(() => setLoading(false));
-    } else {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (token) {
+        setIsAuthenticated(true);
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+        fetchUser().finally(() => setLoading(false));
+      } else {
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error("Error initializing auth state:", error);
+      logout();
       setLoading(false);
     }
   }, []);
