@@ -13,6 +13,13 @@ const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    // Redirect admin users to the admin dashboard
+    if (user?.role === 'admin') {
+      navigate('/admin', { replace: true });
+    }
+  }, [user, navigate]);
+
   // Dummy data for demo
   const dummyExams = [
     { 
