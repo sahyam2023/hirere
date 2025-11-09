@@ -3,7 +3,7 @@ from jose import jwt, JWTError
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db
 from app.models.user import User
 
@@ -42,7 +42,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         if email is None:
             raise credentials_exception
 
-        user = db.query(User).filter(User.email == email).first()
+        user = db.query(User).options(joinedload(User.face_embedding)).filter(User.email == email).first()
         if user is None:
             raise credentials_exception
         return user
