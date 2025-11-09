@@ -43,7 +43,7 @@ def get_assigned_exams(db: Session = Depends(get_db), current_user: User = Depen
     if current_user.role == "admin":
         exams = db.query(Exam).all()
     else:
-        exams = [assignment.exam for assignment in current_user.assignments]
+        exams = db.query(Exam).join(ExamAssignment).filter(ExamAssignment.user_id == current_user.id).all()
     return exams
 
 @router.get("/{exam_id}", response_model=ExamDetailSchema)
@@ -110,7 +110,7 @@ def delete_exam(exam_id: int, db: Session = Depends(get_db), current_user: User 
 
     db.delete(exam)
     db.commit()
-    return
+    return {"ok": True}
 
 @router.post("/{exam_id}/assign")
 def assign_exam(exam_id: int, assignment_data: AssignmentSchema, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
