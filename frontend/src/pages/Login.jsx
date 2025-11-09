@@ -36,6 +36,9 @@ const Login = () => {
       const result = await login(formData);
       if (result.success) {
         // Redirect will be handled by the Navigate component above
+      } else {
+        // Handle failed login, maybe show a toast notification
+        // The error is already logged and toasted in the axios interceptor
       }
     } catch (error) {
       console.error('Login failed:', error);
@@ -144,7 +147,7 @@ const Login = () => {
             <div className="mt-6 p-4 bg-gray-50 rounded-xl">
               <p className="text-sm text-gray-600 mb-2 font-medium">Demo Credentials:</p>
               <p className="text-xs text-gray-500">Student: student@demo.com | Admin: admin@demo.com</p>
-              <p className="text-xs text-gray-500">Password: any password</p>
+              <p className="text-xs text-gray-500">Password: demodemo</p>
             </div>
           </div>
         </motion.div>

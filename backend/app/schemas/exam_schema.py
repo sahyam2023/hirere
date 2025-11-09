@@ -39,3 +39,17 @@ class QuestionResponseSchema(BaseModel):
 
 class ExamDetailSchema(ExamResponseSchema):
     questions: List[QuestionResponseSchema]
+
+class AdminStatsSchema(BaseModel):
+    total_users: int
+    total_exams: int
+    total_submissions: int
+
+class ExamUpdateSchema(BaseModel):
+    title: str
+    description: str
+    duration_minutes: int
+    is_active: bool
+
+class AssignmentSchema(BaseModel):
+    user_id: int

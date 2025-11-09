@@ -4,12 +4,13 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
 from app.models.exam import Exam, Question, Submission
-from app.schemas.exam_schema import ExamSchema, SubmissionSchema, ExamDetailSchema, ExamResponseSchema
+from app.models.assignment import ExamAssignment
+from app.schemas.exam_schema import AdminStatsSchema, ExamUpdateSchema, ExamResponseSchema, ExamSchema, SubmissionSchema, ExamDetailSchema, AssignmentSchema
 from typing import List
 
-router = APIRouter()
+router = APIRouter(prefix="/exams", tags=["exams"])
 
-@router.post("/exams", response_model=ExamResponseSchema)
+@router.post("/", response_model=ExamResponseSchema)
 def create_exam(exam_data: ExamSchema, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Only admins can create exams")
@@ -37,14 +38,22 @@ def create_exam(exam_data: ExamSchema, db: Session = Depends(get_db), current_us
 
     return exam
 
-@router.get("/exams/{exam_id}", response_model=ExamDetailSchema)
+@router.get("/", response_model=List[ExamResponseSchema])
+def get_assigned_exams(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role == "admin":
+        exams = db.query(Exam).all()
+    else:
+        exams = db.query(Exam).join(ExamAssignment).filter(ExamAssignment.user_id == current_user.id).all()
+    return exams
+
+@router.get("/{exam_id}", response_model=ExamDetailSchema)
 def get_exam(exam_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     exam = db.query(Exam).filter(Exam.id == exam_id).first()
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
     return exam
 
-@router.post("/exams/submit")
+@router.post("/submit")
 def submit_exam(submission_data: SubmissionSchema, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     exam = db.query(Exam).filter(Exam.id == submission_data.exam_id).first()
     if not exam:
@@ -68,26 +77,55 @@ def submit_exam(submission_data: SubmissionSchema, db: Session = Depends(get_db)
 
     return {"msg": "submitted", "score": score}
 
-@router.get("/my_submissions")
+@router.get("/my-submissions")
 def get_my_submissions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     submissions = db.query(Submission).filter(Submission.user_id == current_user.id).all()
     return submissions
 
-@router.get("/exams/{exam_id}/results")
-def get_exam_results(exam_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+@router.put("/{exam_id}", response_model=ExamResponseSchema)
+def update_exam(exam_id: int, exam_data: ExamUpdateSchema, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can update exams")
+
     exam = db.query(Exam).filter(Exam.id == exam_id).first()
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
-    if exam.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You are not the owner of this exam")
 
-    submissions = db.query(Submission).filter(Submission.exam_id == exam_id).all()
-    results = []
-    for sub in submissions:
-        candidate = db.query(User).filter(User.id == sub.user_id).first()
-        results.append({
-            "candidate_email": candidate.email,
-            "score": sub.score,
-            "submitted_at": sub.submitted_at
-        })
-    return results
+    exam.title = exam_data.title
+    exam.description = exam_data.description
+    exam.duration_minutes = exam_data.duration_minutes
+    exam.is_active = exam_data.is_active
+    db.commit()
+    db.refresh(exam)
+    return exam
+
+@router.delete("/{exam_id}", status_code=204)
+def delete_exam(exam_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can delete exams")
+
+    exam = db.query(Exam).filter(Exam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    db.delete(exam)
+    db.commit()
+    return {"ok": True}
+
+@router.post("/{exam_id}/assign")
+def assign_exam(exam_id: int, assignment_data: AssignmentSchema, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can assign exams")
+
+    exam = db.query(Exam).filter(Exam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    user = db.query(User).filter(User.id == assignment_data.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    assignment = ExamAssignment(exam_id=exam_id, user_id=assignment_data.user_id)
+    db.add(assignment)
+    db.commit()
+    return {"message": "Exam assigned successfully"}

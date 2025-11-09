@@ -13,6 +13,13 @@ const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    // Redirect admin users to the admin dashboard
+    if (user?.role === 'admin') {
+      navigate('/admin', { replace: true });
+    }
+  }, [user, navigate]);
+
   // Dummy data for demo
   const dummyExams = [
     { 
@@ -139,20 +146,24 @@ const Dashboard = () => {
             <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="p-3 bg-amber-50 rounded-xl">
-                    <CameraIcon className="w-6 h-6 text-amber-600" />
+                  <div className={`p-3 rounded-xl ${user?.is_face_registered ? 'bg-green-50' : 'bg-amber-50'}`}>
+                    <CameraIcon className={`w-6 h-6 ${user?.is_face_registered ? 'text-green-600' : 'text-amber-600'}`} />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Face Verification</p>
-                    <p className="text-sm font-semibold text-amber-600">Setup Required</p>
+                    <p className={`text-sm font-semibold ${user?.is_face_registered ? 'text-green-600' : 'text-amber-600'}`}>
+                      {user?.is_face_registered ? 'Completed' : 'Setup Required'}
+                    </p>
                   </div>
                 </div>
-                <button
-                  onClick={handleFaceRegister}
-                  className="text-xs bg-amber-100 text-amber-800 px-3 py-1 rounded-full hover:bg-amber-200 transition-colors duration-200"
-                >
-                  Setup Now
-                </button>
+                {!user?.is_face_registered && (
+                  <button
+                    onClick={handleFaceRegister}
+                    className="text-xs bg-amber-100 text-amber-800 px-3 py-1 rounded-full hover:bg-amber-200 transition-colors duration-200"
+                  >
+                    Setup Now
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>

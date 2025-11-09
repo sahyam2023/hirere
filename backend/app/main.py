@@ -1,6 +1,7 @@
 from fastapi import FastAPI
-from .routers import health, users, auth, exams, proctor
+from .routers import health, users, auth, exams, proctor, submissions, questions
 from app.core.database import init_db, engine
+from app.models.assignment import ExamAssignment
 from sqlalchemy import inspect, text
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -11,6 +12,8 @@ app.include_router(users.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(exams.router, prefix="/api")
 app.include_router(proctor.router, prefix="/api/proctor", tags=["proctor"])
+app.include_router(submissions.router, prefix="/api/submissions", tags=["submissions"])
+app.include_router(questions.router, prefix="/api/questions", tags=["questions"])
 
 def check_and_add_role_column():
     inspector = inspect(engine)

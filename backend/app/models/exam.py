@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
-from .user import Base
+from app.core.database import Base
 import datetime
 
 class Exam(Base):
@@ -15,6 +15,7 @@ class Exam(Base):
 
     owner = relationship("User")
     questions = relationship("Question", back_populates="exam")
+    assignments = relationship("ExamAssignment", back_populates="exam")
 
 class Question(Base):
     __tablename__ = 'questions'

@@ -11,8 +11,13 @@ import Dashboard from './pages/Dashboard';
 import FaceRegister from './pages/FaceRegister';
 import Exam from './pages/Exam';
 import Results from './pages/Results';
-import AdminDashboard from './pages/AdminDashboard';
-import AdminLogs from './pages/AdminLogs';
+
+// Admin Pages
+import AdminLayout from './pages/admin/AdminLayout';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import ExamManagement from './pages/admin/ExamManagement';
+import QuestionBank from './pages/admin/QuestionBank';
+import AdminResults from './pages/admin/Results';
 
 // Styles
 import 'react-toastify/dist/ReactToastify.css';
@@ -64,37 +69,19 @@ function App() {
             
             {/* Protected Admin Routes */}
             <Route 
-              path="/admin" 
+              path="/admin"
               element={
                 <ProtectedRoute adminOnly>
-                  <AdminDashboard />
+                  <AdminLayout />
                 </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/create" 
-              element={
-                <ProtectedRoute adminOnly>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/exams" 
-              element={
-                <ProtectedRoute adminOnly>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/logs" 
-              element={
-                <ProtectedRoute adminOnly>
-                  <AdminLogs />
-                </ProtectedRoute>
-              } 
-            />
+              }
+            >
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="exams" element={<ExamManagement />} />
+              <Route path="questions" element={<QuestionBank />} />
+              <Route path="results" element={<AdminResults />} />
+            </Route>
             
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

@@ -5,6 +5,7 @@ import Webcam from 'react-webcam';
 import { toast } from 'react-toastify';
 import Navbar from '../components/Navbar';
 import { faceAPI } from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 import { CameraIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 const FaceRegister = () => {
@@ -13,6 +14,7 @@ const FaceRegister = () => {
   const [step, setStep] = useState(1); // 1: capture, 2: preview, 3: success
   const webcamRef = useRef(null);
   const navigate = useNavigate();
+  const { fetchUser } = useAuth();
 
   const captureImage = () => {
     const imageSrc = webcamRef.current.getScreenshot();
@@ -30,13 +32,18 @@ const FaceRegister = () => {
 
     setUploading(true);
     try {
-      await faceAPI.registerFace(capturedImage);
+      // Convert base64 image to a File object
+      const res = await fetch(capturedImage);
+      const blob = await res.blob();
+      const file = new File([blob], "face.jpeg", { type: "image/jpeg" });
+
+      await faceAPI.registerFace(file);
+      await fetchUser(); // Re-fetch user data
       setStep(3);
       toast.success('Face registered successfully');
     } catch (error) {
-      // Simulate success for demo
-      setStep(3);
-      toast.success('Face registered successfully');
+      console.error('Failed to register face:', error);
+      // Error is handled by the axios interceptor
     } finally {
       setUploading(false);
     }
