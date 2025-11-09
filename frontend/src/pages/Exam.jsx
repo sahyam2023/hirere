@@ -69,41 +69,49 @@ const Exam = () => {
     }
   }, [timeLeft]);
 
+  const [showFaceRegistrationModal, setShowFaceRegistrationModal] = useState(false);
+
   const fetchExamData = async () => {
     try {
       const response = await examAPI.getExam(examId);
       setExamData(response.data);
-    } catch (error) {
-      // Use dummy data for demo
-      setExamData({
-        id: parseInt(examId),
-        title: "Python Basics",
-        questions: dummyQuestions,
-        duration: 30
-      });
-    } finally {
       startProctoring();
+    } catch (error) {
+      if (error.response && error.response.status === 403) {
+        setShowFaceRegistrationModal(true);
+      } else {
+        // Handle other errors, maybe show a generic error toast
+        toast.error("Failed to load exam data.");
+        navigate('/dashboard'); // Redirect to a safe page
+      }
     }
   };
 
+  const cameraRef = useRef(null);
+
   const startProctoring = () => {
-    // Simulate proctoring alerts
-    proctorIntervalRef.current = setInterval(() => {
-      const random = Math.random();
-      if (random < 0.1) { // 10% chance of alert
-        const alerts = [
-          { type: 'warning', message: 'Multiple faces detected. Please ensure you are alone.' },
-          { type: 'error', message: 'Face not detected. Please stay in view of the camera.' },
-          { type: 'warning', message: 'Face verification failed. Please look at the camera.' }
-        ];
-        const alert = alerts[Math.floor(Math.random() * alerts.length)];
-        setAlertType(alert.type);
-        setAlertMessage(alert.message);
-        setShowAlert(true);
-        
-        setTimeout(() => setShowAlert(false), 5000);
+    proctorIntervalRef.current = setInterval(async () => {
+      if (cameraRef.current) {
+        const imageSrc = cameraRef.current.getScreenshot();
+        if (imageSrc) {
+          try {
+            const response = await proctorAPI.post('/frame', {
+              exam_id: examId,
+              image_base64: imageSrc,
+            });
+            const { alert } = response.data;
+            if (alert) {
+              setAlertType('warning'); // Or determine from response
+              setAlertMessage(alert);
+              setShowAlert(true);
+              setTimeout(() => setShowAlert(false), 5000);
+            }
+          } catch (error) {
+            console.error('Proctoring error:', error);
+          }
+        }
       }
-    }, 20000); // Check every 20 seconds
+    }, 5000); // Send frame every 5 seconds
   };
 
   const handleAnswerSelect = (answerIndex) => {
@@ -272,6 +280,7 @@ const Exam = () => {
             </div>
             
             <CameraFeed 
+              ref={cameraRef}
               width={300} 
               height={225} 
               className="w-full"
@@ -297,30 +306,28 @@ const Exam = () => {
       {/* Submit Confirmation Modal */}
       {showSubmitModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          {/* ... existing modal content ... */}
+        </div>
+      )}
+
+      {/* Face Registration Modal */}
+      {showFaceRegistrationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-8 max-w-md w-full"
+            className="bg-white rounded-2xl p-8 max-w-md w-full text-center"
           >
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Submit Exam?</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Face Registration Required</h3>
             <p className="text-gray-600 mb-6">
-              You have answered {Object.keys(answers).length} out of {questions.length} questions. 
-              Once submitted, you cannot make changes.
+              You must complete face registration before you can start this exam.
             </p>
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setShowSubmitModal(false)}
-                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors duration-200"
-              >
-                Continue Exam
-              </button>
-              <button
-                onClick={handleSubmitExam}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl transition-all duration-200"
-              >
-                Submit Now
-              </button>
-            </div>
+            <button
+              onClick={() => navigate('/face-register')}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all duration-200"
+            >
+              Go to Face Registration
+            </button>
           </motion.div>
         </div>
       )}

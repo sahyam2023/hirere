@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Text
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 import datetime
@@ -8,11 +8,9 @@ class ProctorLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     exam_id = Column(Integer, ForeignKey('exams.id'), nullable=False)
-    session_id = Column(String, index=True, nullable=False)
-    event_type = Column(String, nullable=False)
-    image_path = Column(String, nullable=True)
-    audio_path = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    event_type = Column(String)  # e.g. 'face_absent', 'multi_face'
+    message = Column(Text)
 
     user = relationship("User")
     exam = relationship("Exam")

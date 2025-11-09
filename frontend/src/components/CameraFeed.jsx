@@ -1,8 +1,8 @@
-import React, { useRef, useCallback } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import { CameraIcon } from '@heroicons/react/24/outline';
 
-const CameraFeed = ({ width = 200, height = 150, onCapture, className = "" }) => {
+const CameraFeed = forwardRef(({ width = 200, height = 150, onCapture, className = "" }, ref) => {
   const webcamRef = useRef(null);
 
   const captureImage = useCallback(() => {
@@ -14,6 +14,12 @@ const CameraFeed = ({ width = 200, height = 150, onCapture, className = "" }) =>
       return imageSrc;
     }
   }, [onCapture]);
+
+  useImperativeHandle(ref, () => ({
+    getScreenshot: () => {
+      return webcamRef.current ? webcamRef.current.getScreenshot() : null;
+    }
+  }));
 
   const videoConstraints = {
     width: width,
@@ -50,6 +56,6 @@ const CameraFeed = ({ width = 200, height = 150, onCapture, className = "" }) =>
       )}
     </div>
   );
-};
+});
 
 export default CameraFeed;

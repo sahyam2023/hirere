@@ -4,6 +4,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
 from app.models.exam import Exam, Question, Submission
+from app.models.proctor import UserFace
 from app.models.assignment import ExamAssignment
 from app.schemas.exam_schema import AdminStatsSchema, ExamUpdateSchema, ExamResponseSchema, ExamSchema, SubmissionSchema, ExamDetailSchema, AssignmentSchema
 from typing import List
@@ -48,6 +49,11 @@ def get_assigned_exams(db: Session = Depends(get_db), current_user: User = Depen
 
 @router.get("/{exam_id}", response_model=ExamDetailSchema)
 def get_exam(exam_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Check if the user has a registered face
+    user_face = db.query(UserFace).filter(UserFace.user_id == current_user.id).first()
+    if not user_face:
+        raise HTTPException(status_code=403, detail="Please complete face registration before starting the exam.")
+
     exam = db.query(Exam).filter(Exam.id == exam_id).first()
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
