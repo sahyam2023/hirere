@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import ExamCard from '../components/ExamCard';
 import { examAPI } from '../api/axios';
-import { UserIcon, ClipboardDocumentListIcon, CameraIcon } from '@heroicons/react/24/outline';
+import { UserIcon, ClipboardDocumentListIcon, CameraIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 const Dashboard = () => {
   const [exams, setExams] = useState([]);
@@ -156,12 +156,20 @@ const Dashboard = () => {
                     </p>
                   </div>
                 </div>
-                {!user?.is_face_registered && (
+                {!user?.is_face_registered ? (
                   <button
                     onClick={handleFaceRegister}
                     className="text-xs bg-amber-100 text-amber-800 px-3 py-1 rounded-full hover:bg-amber-200 transition-colors duration-200"
                   >
                     Setup Now
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleFaceRegister}
+                    className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors duration-200"
+                    title="Re-register face"
+                  >
+                    <ArrowPathIcon className="w-5 h-5" />
                   </button>
                 )}
               </div>
