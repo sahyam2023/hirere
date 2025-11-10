@@ -26,9 +26,7 @@ services:
       - backend
 
   db:
-    build:
-      context: .
-      dockerfile: database.Dockerfile
+    image: ankane/pgvector:latest
     container_name: hirere_db
     restart: always
     environment:
