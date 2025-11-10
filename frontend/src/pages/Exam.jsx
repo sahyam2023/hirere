@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import QuestionCard from '../components/QuestionCard';
 import CameraFeed from '../components/CameraFeed';
-import AlertBanner from '../components/AlertBanner';
+import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
 import { examAPI, proctorAPI } from '../api/axios';
 import { ClockIcon, ExclamationTriangleIcon as ExclamationIcon } from '@heroicons/react/24/outline';
 
@@ -17,9 +17,7 @@ const Exam = () => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes in seconds
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertMessage, setAlertMessage] = useState('');
-  const [alertType, setAlertType] = useState('warning');
+  const [proctoringAlert, setProctoringAlert] = useState({ open: false, message: '' });
   const [showSubmitModal, setShowSubmitModal] = useState(false);
 
   const proctorIntervalRef = useRef(null);
@@ -101,13 +99,12 @@ const Exam = () => {
             });
             const { alert } = response.data;
             if (alert) {
-              setAlertType('warning'); // Or determine from response
-              setAlertMessage(alert);
-              setShowAlert(true);
-              setTimeout(() => setShowAlert(false), 5000);
+              setProctoringAlert({ open: true, message: alert });
             }
           } catch (error) {
             console.error('Proctoring error:', error);
+            // Optionally, show a generic error to the user in the dialog
+            // setProctoringAlert({ open: true, message: 'Proctoring service connection lost.' });
           }
         }
       }
@@ -176,15 +173,30 @@ const Exam = () => {
   const currentQuestionData = questions[currentQuestion];
   const progress = ((currentQuestion + 1) / questions.length) * 100;
 
+  const handleCloseAlert = () => {
+    setProctoringAlert({ open: false, message: '' });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {showAlert && (
-        <AlertBanner 
-          type={alertType} 
-          message={alertMessage}
-          onClose={() => setShowAlert(false)}
-        />
-      )}
+      <Dialog
+        open={proctoringAlert.open}
+        onClose={handleCloseAlert}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">{"Proctoring Warning"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            {proctoringAlert.message}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseAlert} color="primary" autoFocus>
+            Acknowledge
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <div className="flex h-screen">
         {/* Main content - Questions */}

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { EyeIcon, EyeSlashIcon as EyeOffIcon } from '@heroicons/react/24/outline';
 
@@ -41,7 +40,7 @@ const Login = () => {
         // The error is already logged and toasted in the axios interceptor
       }
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Login failed in component:', error.response ? error.response.data : error.message);
     } finally {
       setLoading(false);
     }
@@ -51,10 +50,7 @@ const Login = () => {
     <div className="min-h-screen flex">
       {/* Left side - Brand */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+        <div
           className="text-center text-white p-8"
         >
           <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm">
@@ -64,15 +60,12 @@ const Login = () => {
           <p className="text-xl text-blue-100">
             Advanced AI-powered exam proctoring for fair and secure assessments
           </p>
-        </motion.div>
+        </div>
       </div>
 
       {/* Right side - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+        <div
           className="w-full max-w-md"
         >
           <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -150,7 +143,7 @@ const Login = () => {
               <p className="text-xs text-gray-500">Password: demodemo</p>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

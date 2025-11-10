@@ -65,10 +65,26 @@ def frame(
     
     if not face_detected:
         alert = "Face not detected — please stay in frame."
+        print(f"Proctoring violation for user {current_user.email}: Face not detected.")
     elif multiple_faces:
         alert = "Multiple people detected — please ensure you’re alone."
+        print(f"Proctoring violation for user {current_user.email}: Multiple faces detected.")
     
+    # Placeholder for half face or covered face detection
+    # This would require a more sophisticated model, but we can simulate it.
+    # For example, by checking if the face landmarks are symmetrical or complete.
+    # if is_face_partially_covered(image):
+    #     alert = "Face partially covered — please ensure your face is fully visible."
+    #     print(f"Proctoring violation for user {current_user.email}: Face partially covered.")
+
+    # Placeholder for camera covered/tampering
+    # This could be detected by checking for frames that are too dark or uniform.
+    # if is_camera_covered(image):
+    #     alert = "Camera covered or tampered with — please ensure the camera is clear."
+    #     print(f"Proctoring violation for user {current_user.email}: Camera covered.")
+
     match_score = None
+    # Run identity check randomly (1 in 6 frames)
     if random.randint(0, 5) == 0:
         user_face = db.query(UserFace).filter(UserFace.user_id == current_user.id).first()
         if not user_face:
