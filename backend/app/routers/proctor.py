@@ -107,17 +107,12 @@ def frame(
     image = decode_image_from_base64(payload.image_base64)
     state = get_user_state(current_user.id, payload.exam_id)
 
-    # --- START DEBUG BLOCK ---
+    # (Your existing debug logs are great, we'll keep them)
     print("\n" + "="*80)
     print(f"| PROCESSING FRAME at {time.strftime('%H:%M:%S')} for User: {current_user.id}, Exam: {payload.exam_id}")
     print("="*80)
-    print("[STATE BEFORE]:")
-    print(f"  - face_missing_frames: {state.face_missing_frames}")
-    print(f"  - multi_face_frames: {state.multi_face_frames}")
-    print(f"  - identity_mismatch_frames: {state.identity_mismatch_frames}")
-    # --- END DEBUG BLOCK ---
+    print(f"[STATE BEFORE]: face_missing: {state.face_missing_frames}, multi_face: {state.multi_face_frames}, mismatch: {state.identity_mismatch_frames}")
 
-    # 1. Check for face presence and count
     face_check_event = check_face_presence_and_count(image)
     print(f"\n[STEP 1: DETECTION]: Face check result = '{face_check_event}'")
 
@@ -133,13 +128,35 @@ def frame(
         state.face_missing_frames = 0
         state.multi_face_frames = 0
         
-        # 2. If one face is present, perform identity verification
         print("\n[STEP 2: VERIFICATION]: Face detected, verifying identity...")
         user_face = db.query(UserFace).filter(UserFace.user_id == current_user.id).first()
         if not user_face:
             raise HTTPException(status_code=400, detail="No baseline face registered for this user.")
+
+        # --- START: DIAGNOSIS & FIX ---
+
+        # 1. DIAGNOSE: Let's see the type of the retrieved embedding
+        print("\n--- EMBEDDING DEBUG ---")
+        print(f"  - Type of retrieved embedding from DB: {type(user_face.embedding_vector)}")
         
-        match_score = verify_identity(image, user_face.embedding_vector)
+        retrieved_embedding = user_face.embedding_vector
+
+        # 2. FIX: If the type is a string, convert it back to a NumPy array.
+        if isinstance(retrieved_embedding, str):
+            print("  - Embedding is a string. Converting back to NumPy array.")
+            # Remove brackets and split by comma
+            cleaned_string = retrieved_embedding.strip('[]')
+            # Convert string numbers to float numbers and create a NumPy array
+            retrieved_embedding = np.fromstring(cleaned_string, dtype=float, sep=',')
+        
+        print(f"  - Final embedding type for comparison: {type(retrieved_embedding)}")
+        print("--- END EMBEDDING DEBUG ---\n")
+
+        # 3. USE THE CORRECTED EMBEDDING
+        match_score = verify_identity(image, retrieved_embedding)
+        
+        # --- END: DIAGNOSIS & FIX ---
+
         print(f"  - Match Score: {match_score:.4f} (Threshold: < {settings.face_match_threshold})")
         if match_score > settings.face_match_threshold:
             state.identity_mismatch_frames += 1
@@ -148,51 +165,36 @@ def frame(
             state.identity_mismatch_frames = 0
             print("  - Result: Identity MATCHED.")
 
-    # --- START DEBUG BLOCK ---
-    print("\n[STATE AFTER UPDATE]:")
-    print(f"  - face_missing_frames: {state.face_missing_frames}")
-    print(f"  - multi_face_frames: {state.multi_face_frames}")
-    print(f"  - identity_mismatch_frames: {state.identity_mismatch_frames}")
-    # --- END DEBUG BLOCK ---
-    
-    # 3. Prioritize and trigger alerts
+    # ... (The rest of the function remains exactly the same)
+    print(f"\n[STATE AFTER UPDATE]: face_missing: {state.face_missing_frames}, multi_face: {state.multi_face_frames}, mismatch: {state.identity_mismatch_frames}")
     print("\n[STEP 3: ALERTING LOGIC]:")
     
-    print(f"- Checking for 'no_face' alert (threshold: {settings.proctoring_face_missing_threshold})...")
     if state.face_missing_frames >= settings.proctoring_face_missing_threshold and state.can_trigger_alert("no_face"):
         alert = "Face not detected for an extended period."
         event = "no_face"
-        print("  !!!! 'NO_FACE' ALERT TRIGGERED !!!!")
         state.record_alert("no_face")
         state.face_missing_frames = 0
     
     elif state.multi_face_frames >= settings.proctoring_multi_face_threshold and state.can_trigger_alert("multi_face"):
-        print(f"- Checking for 'multi_face' alert (threshold: {settings.proctoring_multi_face_threshold})...")
         alert = "Multiple faces detected."
         event = "multi_face"
-        print("  !!!! 'MULTI_FACE' ALERT TRIGGERED !!!!")
         state.record_alert("multi_face")
         state.multi_face_frames = 0
         
     elif state.identity_mismatch_frames >= settings.proctoring_identity_mismatch_threshold and state.can_trigger_alert("identity_mismatch"):
-        print(f"- Checking for 'identity_mismatch' alert (threshold: {settings.proctoring_identity_mismatch_threshold})...")
         alert = "Face verification failed — identity mismatch."
         event = "identity_mismatch"
-        print("  !!!! 'IDENTITY_MISMATCH' ALERT TRIGGERED !!!!")
         state.record_alert("identity_mismatch")
         state.identity_mismatch_frames = 0
     else:
         print("- No alert conditions met.")
 
     if alert:
-        print(f"\n[DATABASE]: Logging alert '{alert}' to the database.")
         proctor_log = ProctorLog(user_id=current_user.id, exam_id=payload.exam_id, session_id=payload.session_id, event_type=event, message=alert)
         db.add(proctor_log)
         db.commit()
 
-    print("\n[RESPONSE]:")
-    print(f"  - event: '{event}'")
-    print(f"  - alert: '{alert}'")
+    print(f"\n[RESPONSE]: event: '{event}', alert: '{alert}'")
     print("="*80 + "\n")
 
     return {"event": event, "alert": alert}

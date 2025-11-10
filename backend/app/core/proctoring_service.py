@@ -2,10 +2,18 @@ import cv2
 import numpy as np
 from deepface import DeepFace
 import base64
+import threading
 
-# Constants
-FACE_ABSENCE_THRESHOLD_SEC = 5
-SIMILARITY_THRESHOLD = 0.4
+# Import the correct distance function from the modern deepface module path.
+from deepface.modules.verification import find_cosine_distance
+
+# --- Create a global lock for all DeepFace operations ---
+# This is the most critical fix for stability. It ensures that only one 
+# thread can access the underlying C++ libraries (TensorFlow, OpenCV) at a time,
+# preventing memory corruption errors like "double free" or "malloc".
+DEEPFACE_LOCK = threading.Lock()
+
+# Define a constant for the number of faces that triggers a "multi_face" event.
 MULTI_FACE_THRESHOLD = 1
 
 def decode_image_from_base64(base64_string: str):
@@ -18,23 +26,29 @@ def decode_image_from_base64(base64_string: str):
         np_arr = np.frombuffer(image_data, np.uint8)
         image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         return image
-    except Exception as e:
-        # Handle potential decoding errors
+    except Exception:
+        # Return None if the base64 string is invalid or corrupted.
         return None
 
 def check_face_presence_and_count(image):
     """
-    Checks for the presence and number of faces in an image using DeepFace.
+    Checks for the presence and number of faces in an image using a robust detector.
+    This operation is thread-safe due to the global lock.
     """
     if image is None:
         return "no_face"
 
     try:
-        face_objs = DeepFace.extract_faces(
-            img_path=image,
-            enforce_detection=True,
-            detector_backend="retinaface"  # <--- ADD THIS LINE FOR BETTER DETECTION
-        )
+        # Acquire the lock to ensure this is the only thread running a DeepFace function.
+        with DEEPFACE_LOCK:
+            # Pass a copy of the image to DeepFace to prevent any potential
+            # memory conflicts where the original object is modified.
+            face_objs = DeepFace.extract_faces(
+                img_path=image.copy(),
+                enforce_detection=True,
+                detector_backend="retinaface"
+            )
+        # The lock is automatically released after the 'with' block.
         
         num_faces = len(face_objs)
         
@@ -46,27 +60,43 @@ def check_face_presence_and_count(image):
             return "face_ok"
             
     except ValueError:
+        # DeepFace throws ValueError if enforce_detection is True and no face is found.
         return "no_face"
 
 def verify_identity(live_image, user_embedding):
     """
     Verifies the identity of a live image against a stored user embedding.
-    Returns: The cosine distance, where a lower value indicates a better match.
+    This operation is thread-safe and uses the correct low-level comparison logic.
     """
     if live_image is None:
-        return 1.0  # Return a high distance for invalid images
+        return 1.0  # Return max distance for invalid images
 
     try:
-        # Verify the live image against the stored embedding
-        result = DeepFace.verify(
-            img1_path=live_image,
-            img2_representation=user_embedding,
-            model_name="ArcFace",
-            distance_metric="cosine",
-            enforce_detection=False  # We do detection separately
-        )
-        return result.get("distance", 1.0)
-    except Exception:
-        # If any error occurs (e.g., face not found in live_image),
-        # return a high distance to signify a mismatch.
+        # Acquire the lock to ensure this is the only thread running a DeepFace function.
+        with DEEPFACE_LOCK:
+            # 1. Generate the embedding for the live camera image.
+            # Pass a copy to prevent memory corruption.
+            live_embedding_obj = DeepFace.represent(
+                img_path=live_image.copy(),
+                model_name="ArcFace",
+                enforce_detection=True,
+                detector_backend="retinaface"
+            )
+        # The lock is automatically released here.
+        
+        live_embedding = live_embedding_obj[0]["embedding"]
+
+        # 2. Compare the live embedding with the stored embedding using the correct function.
+        distance = find_cosine_distance(live_embedding, user_embedding)
+        
+        return distance
+
+    except (ValueError, IndexError):
+        # This occurs if DeepFace.represent fails to find a face in the live image.
+        # This is considered a failed verification.
+        print("[VERIFY INFO]: No face detected in the live frame during verification step.")
+        return 1.0
+    except Exception as e:
+        # Catch any other unexpected errors during verification.
+        print(f"[VERIFY EXCEPTION]: An unexpected error occurred: {e}")
         return 1.0
