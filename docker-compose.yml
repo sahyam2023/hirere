@@ -8,6 +8,7 @@ services:
       - ./backend:/app
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/hirere
+    command: sh -c "python app/preload_models.py && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     depends_on:
       - db
 
