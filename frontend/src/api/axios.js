@@ -93,6 +93,13 @@ export const proctorAPI = {
     formData.append('file', file);
     return api.post('/proctor/frame', formData);
   },
+  sendFrameAsBase64: (examId, imageBase64, sessionId) => {
+    return api.post('/proctor/frame', {
+      exam_id: examId,
+      image_base64: imageBase64,
+      session_id: sessionId,
+    });
+  },
   getLogs: (examId) => api.get('/proctor/logs', { params: { exam_id: examId } }),
   getSummary: (examId) => api.get('/proctor/summary', { params: { exam_id: examId } }),
 };

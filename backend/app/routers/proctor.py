@@ -50,15 +50,16 @@ def register_face(
     return {"message": "Face registered successfully."}
 
 
+from app.schemas.proctor import FramePayload
+
 @router.post("/frame")
 def frame(
+    payload: FramePayload,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    exam_id: int = Body(...),
-    image_base64: str = Body(...)
+    current_user: User = Depends(get_current_user)
 ):
     alert = None
-    image = decode_image_from_base64(image_base64)
+    image = decode_image_from_base64(payload.image_base64)
     
     event = check_face_presence_and_count(image)
     state = get_user_state(current_user.id)
@@ -95,7 +96,8 @@ def frame(
     if alert:
         proctor_log = ProctorLog(
             user_id=current_user.id,
-            exam_id=exam_id,
+            exam_id=payload.exam_id,
+            session_id=payload.session_id,
             event_type=event,
             message=alert
         )

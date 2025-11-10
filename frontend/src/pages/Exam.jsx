@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import QuestionCard from '../components/QuestionCard';
@@ -19,6 +20,7 @@ const Exam = () => {
   const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes in seconds
   const [proctoringAlert, setProctoringAlert] = useState(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [sessionId] = useState(() => uuidv4());
 
   const proctorIntervalRef = useRef(null);
 
@@ -93,10 +95,7 @@ const Exam = () => {
         const imageSrc = cameraRef.current.getScreenshot();
         if (imageSrc) {
           try {
-            const response = await proctorAPI.post('/frame', {
-              exam_id: examId,
-              image_base64: imageSrc,
-            });
+            const response = await proctorAPI.sendFrameAsBase64(examId, imageSrc, sessionId);
             const { alert } = response.data;
             if (alert) {
               setProctoringAlert(alert);

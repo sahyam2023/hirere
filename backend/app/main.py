@@ -23,10 +23,30 @@ def check_and_add_role_column():
             connection.execute(text('ALTER TABLE users ADD COLUMN role VARCHAR NOT NULL DEFAULT \'user\''))
             connection.commit()
 
+def check_and_add_message_column_to_proctor_logs():
+    inspector = inspect(engine)
+    if 'proctor_logs' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('proctor_logs')]
+        if 'message' not in columns:
+            with engine.connect() as connection:
+                connection.execute(text('ALTER TABLE proctor_logs ADD COLUMN message TEXT'))
+                connection.commit()
+
+def check_and_add_session_id_to_proctor_logs():
+    inspector = inspect(engine)
+    if 'proctor_logs' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('proctor_logs')]
+        if 'session_id' not in columns:
+            with engine.connect() as connection:
+                connection.execute(text('ALTER TABLE proctor_logs ADD COLUMN session_id VARCHAR NOT NULL'))
+                connection.commit()
+
 @app.on_event("startup")
 def startup_event():
     init_db()
     check_and_add_role_column()
+    check_and_add_message_column_to_proctor_logs()
+    check_and_add_session_id_to_proctor_logs()
 
 app.add_middleware(
     CORSMiddleware,

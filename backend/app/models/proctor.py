@@ -8,6 +8,7 @@ class ProctorLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     exam_id = Column(Integer, ForeignKey('exams.id'), nullable=False)
+    session_id = Column(String, nullable=False)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     event_type = Column(String)  # e.g. 'face_absent', 'multi_face'
     message = Column(Text)
