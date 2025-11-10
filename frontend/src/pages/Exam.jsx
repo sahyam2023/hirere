@@ -98,7 +98,14 @@ const Exam = () => {
             const response = await proctorAPI.sendFrameAsBase64(examId, imageSrc, sessionId);
             const { alert } = response.data;
             if (alert) {
-              setProctoringAlert(alert);
+              // This is the key change. We briefly set the alert to null
+              // to ensure that even if the new alert message is the same as the old one,
+              // React detects a state change and re-renders the component.
+              setProctoringAlert(null); 
+              
+              setTimeout(() => {
+                setProctoringAlert(alert);
+              }, 50); // 50ms is imperceptible to the user but enough for React
             }
           } catch (error) {
             console.error('Proctoring error:', error);

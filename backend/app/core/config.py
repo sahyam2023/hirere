@@ -6,5 +6,6 @@ class Settings(BaseSettings):
     face_match_threshold: float = 0.4
     proctoring_face_missing_threshold: int = 5
     proctoring_multi_face_threshold: int = 5
+    proctoring_identity_mismatch_threshold: int = 3
 
 settings = Settings()

@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import mediapipe as mp
 from deepface import DeepFace
 import base64
 
@@ -8,10 +7,6 @@ import base64
 FACE_ABSENCE_THRESHOLD_SEC = 5
 SIMILARITY_THRESHOLD = 0.4
 MULTI_FACE_THRESHOLD = 1
-
-# Initialize Mediapipe Face Detection
-mp_face_detection = mp.solutions.face_detection
-face_detection = mp_face_detection.FaceDetection(min_detection_confidence=0.5)
 
 def decode_image_from_base64(base64_string: str):
     """Decodes a base64 string to a CV2 image."""
@@ -29,42 +24,52 @@ def decode_image_from_base64(base64_string: str):
 
 def check_face_presence_and_count(image):
     """
-    Checks for the presence and number of faces in an image using Mediapipe.
+    Checks for the presence and number of faces in an image using DeepFace.
     Returns: A string indicating the event type ("no_face", "multi_face", or "face_ok").
     """
     if image is None:
         return "no_face"
 
-    rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    results = face_detection.process(rgb_image)
-
-    if not results.detections:
+    try:
+        # extract_faces returns a list of dictionaries, one for each detected face
+        face_objs = DeepFace.extract_faces(
+            img_path=image,
+            enforce_detection=True,
+            detector_backend="opencv"  # A fast detector
+        )
+        
+        num_faces = len(face_objs)
+        
+        if num_faces == 0:
+            return "no_face"
+        elif num_faces > MULTI_FACE_THRESHOLD:
+            return "multi_face"
+        else:
+            return "face_ok"
+            
+    except ValueError:
+        # This exception is thrown by DeepFace when no faces are detected
         return "no_face"
-    
-    num_faces = len(results.detections)
-    if num_faces > MULTI_FACE_THRESHOLD:
-        return "multi_face"
-    
-    return "face_ok"
 
-def verify_identity(image, user_embedding):
+def verify_identity(live_image, user_embedding):
     """
-    Verifies the identity of the face in the image against a stored embedding.
-    Returns: The cosine similarity score.
+    Verifies the identity of a live image against a stored user embedding.
+    Returns: The cosine distance, where a lower value indicates a better match.
     """
-    if image is None:
-        return 0.0
+    if live_image is None:
+        return 1.0  # Return a high distance for invalid images
 
     try:
-        # DeepFace expects the image in BGR format
+        # Verify the live image against the stored embedding
         result = DeepFace.verify(
-            img1_path=image,
-            img2_path=user_embedding,  # This should be the path to the user's registered face image or the embedding itself
+            img1_path=live_image,
+            img2_representation=user_embedding,
             model_name="VGG-Face",
             distance_metric="cosine",
-            enforce_detection=False
+            enforce_detection=False  # We do detection separately
         )
-        return result.get("distance", 1.0) # Return distance, default to 1.0 if not found
-    except Exception as e:
-        # Handle cases where DeepFace fails to find a face or other errors
-        return 1.0 # Return a high distance value to indicate a mismatch
+        return result.get("distance", 1.0)
+    except Exception:
+        # If any error occurs (e.g., face not found in live_image),
+        # return a high distance to signify a mismatch.
+        return 1.0
