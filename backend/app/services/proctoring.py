@@ -20,7 +20,7 @@ def analyze_face(image_path: str, baseline_embedding: list) -> str:
             return "multi_face"
 
         # Generate embedding for the detected face
-        current_embedding = DeepFace.represent(img_path=image_path, model_name='VGG-Face', enforce_detection=False)[0]['embedding']
+        current_embedding = DeepFace.represent(img_path=image_path, model_name='ArcFace', enforce_detection=False)[0]['embedding']
 
         # Compare with the baseline embedding
         distance = np.linalg.norm(np.array(current_embedding) - np.array(baseline_embedding))
@@ -39,7 +39,7 @@ def generate_embedding(image_path: str) -> Union[list, None]:
     Generates a face embedding from an image.
     """
     try:
-        embedding = DeepFace.represent(img_path=image_path, model_name='VGG-Face', enforce_detection=True)[0]['embedding']
+        embedding = DeepFace.represent(img_path=image_path, model_name='ArcFace', enforce_detection=True)[0]['embedding']
         return embedding
     except Exception as e:
         print(f"Error generating embedding: {e}")

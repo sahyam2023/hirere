@@ -77,10 +77,10 @@ export const examAPI = {
 };
 
 export const faceAPI = {
-  registerFace: (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    return api.post('/proctor/register_face', formData);
+  registerFace: (base64Images) => {
+    return api.post('/proctor/register_face', {
+      image_base64_list: base64Images
+    });
   },
   verifyFace: (imageData) => Promise.resolve({ data: { verified: true } }),
 };

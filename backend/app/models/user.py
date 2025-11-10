@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String, Boolean
-from sqlalchemy.orm import relationship, column_property
-from sqlalchemy.sql.expression import exists
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.hybrid import hybrid_property
 from .proctor import UserFace
 from app.core.database import Base
 
@@ -12,9 +12,9 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     role = Column(String, default="user", nullable=False)
 
-    face_embedding = relationship("UserFace", uselist=False, back_populates="user")
+    face_embedding = relationship("UserFace", uselist=False, back_populates="user", lazy="joined")
     assignments = relationship("ExamAssignment", back_populates="user")
 
-    is_face_registered = column_property(
-        exists().where(UserFace.user_id == id)
-    )
+    @hybrid_property
+    def is_face_registered(self):
+        return self.face_embedding is not None

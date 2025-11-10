@@ -21,7 +21,7 @@ class UserFace(Base):
     __tablename__ = 'user_faces'
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    embedding_vector = Column(Vector(4096), nullable=False)
+    embedding_vector = Column(Vector(512), nullable=False)
     image_path = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 

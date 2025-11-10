@@ -29,7 +29,6 @@ router = APIRouter()
 UPLOAD_DIR = Path("/app/uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-# (The /register_face endpoint remains the same, no changes needed there)
 @router.post("/register_face")
 def register_face(
     db: Session = Depends(get_db),
@@ -38,31 +37,65 @@ def register_face(
 ):
     if not image_base64_list or len(image_base64_list) < 3:
         raise HTTPException(status_code=400, detail="Please provide at least 3 images for robust registration.")
-    embeddings, reference_image_path = [], None
+
+    embeddings = []
+    reference_image_path = None
+
     for i, image_base64 in enumerate(image_base64_list):
         image_data = decode_image_from_base64(image_base64)
-        if image_data is None: raise HTTPException(status_code=400, detail=f"Invalid image data found for image {i+1}.")
+        if image_data is None:
+            # This error is for a corrupted base64 string
+            raise HTTPException(status_code=400, detail=f"Invalid image data received for image {i+1}.")
+
         try:
-            embedding_obj = DeepFace.represent(img_path=image_data, model_name="VGG-Face", enforce_detection=True)
+            # --- THE FIX IS HERE ---
+            # We are now specifying a much better face detector.
+            embedding_obj = DeepFace.represent(
+                img_path=image_data,
+                model_name="ArcFace",
+                enforce_detection=True,
+                detector_backend="retinaface"  # <--- THIS IS THE KEY CHANGE
+            )
+            # --- END OF FIX ---
+            
             embeddings.append(embedding_obj[0]["embedding"])
+
             if i == 0:
                 image_filename = f"{current_user.id}_{uuid.uuid4()}.jpg"
                 reference_image_path = str(UPLOAD_DIR / image_filename)
                 cv2.imwrite(reference_image_path, image_data)
-        except (ValueError, IndexError): raise HTTPException(status_code=400, detail=f"Could not detect a face in image {i+1}.")
-    if not embeddings: raise HTTPException(status_code=400, detail="Face detection failed for all provided images.")
-    average_embedding = np.mean(embeddings, axis=0).tolist()
+        
+        except (ValueError, IndexError):
+            # This error is now specifically for when the detector fails.
+            # We can give the user a much more helpful message.
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Could not detect a face in image {i+1}. Please ensure your face is well-lit and not turned too far away from the camera."
+            )
+
+    if not embeddings:
+        raise HTTPException(status_code=400, detail="Face detection failed for all provided images.")
+
+    average_embedding = np.mean(embeddings, axis=0)
+
     user_face = db.query(UserFace).filter(UserFace.user_id == current_user.id).first()
     if user_face:
         user_face.embedding_vector = average_embedding
         user_face.image_path = reference_image_path
     else:
-        user_face = UserFace(user_id=current_user.id, embedding_vector=average_embedding, image_path=reference_image_path)
+        user_face = UserFace(
+            user_id=current_user.id,
+            embedding_vector=average_embedding,
+            image_path=reference_image_path
+        )
         db.add(user_face)
+    
     db.commit()
+
     return {"message": "Face registered successfully using multiple angles."}
 
 
+# The rest of the file (/frame endpoint) remains the same.
 @router.post("/frame")
 def frame(
     payload: FramePayload,

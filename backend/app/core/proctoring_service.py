@@ -25,17 +25,15 @@ def decode_image_from_base64(base64_string: str):
 def check_face_presence_and_count(image):
     """
     Checks for the presence and number of faces in an image using DeepFace.
-    Returns: A string indicating the event type ("no_face", "multi_face", or "face_ok").
     """
     if image is None:
         return "no_face"
 
     try:
-        # extract_faces returns a list of dictionaries, one for each detected face
         face_objs = DeepFace.extract_faces(
             img_path=image,
             enforce_detection=True,
-            detector_backend="opencv"  # A fast detector
+            detector_backend="retinaface"  # <--- ADD THIS LINE FOR BETTER DETECTION
         )
         
         num_faces = len(face_objs)
@@ -48,7 +46,6 @@ def check_face_presence_and_count(image):
             return "face_ok"
             
     except ValueError:
-        # This exception is thrown by DeepFace when no faces are detected
         return "no_face"
 
 def verify_identity(live_image, user_embedding):
@@ -64,7 +61,7 @@ def verify_identity(live_image, user_embedding):
         result = DeepFace.verify(
             img1_path=live_image,
             img2_representation=user_embedding,
-            model_name="VGG-Face",
+            model_name="ArcFace",
             distance_metric="cosine",
             enforce_detection=False  # We do detection separately
         )
