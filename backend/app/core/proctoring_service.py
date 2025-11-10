@@ -30,21 +30,22 @@ def decode_image_from_base64(base64_string: str):
 def check_face_presence_and_count(image):
     """
     Checks for the presence and number of faces in an image using Mediapipe.
-    Returns: A tuple (face_detected: bool, multiple_faces: bool)
+    Returns: A string indicating the event type ("no_face", "multi_face", or "face_ok").
     """
     if image is None:
-        return False, False
+        return "no_face"
 
     rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     results = face_detection.process(rgb_image)
 
     if not results.detections:
-        return False, False  # No faces detected
+        return "no_face"
     
     num_faces = len(results.detections)
-    multiple_faces = num_faces > MULTI_FACE_THRESHOLD
+    if num_faces > MULTI_FACE_THRESHOLD:
+        return "multi_face"
     
-    return True, multiple_faces
+    return "face_ok"
 
 def verify_identity(image, user_embedding):
     """

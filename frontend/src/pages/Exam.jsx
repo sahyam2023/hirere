@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import QuestionCard from '../components/QuestionCard';
 import CameraFeed from '../components/CameraFeed';
-import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
+import AlertBanner from '../components/AlertBanner';
 import { examAPI, proctorAPI } from '../api/axios';
 import { ClockIcon, ExclamationTriangleIcon as ExclamationIcon } from '@heroicons/react/24/outline';
 
@@ -17,7 +17,7 @@ const Exam = () => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes in seconds
-  const [proctoringAlert, setProctoringAlert] = useState({ open: false, message: '' });
+  const [proctoringAlert, setProctoringAlert] = useState(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
 
   const proctorIntervalRef = useRef(null);
@@ -99,16 +99,15 @@ const Exam = () => {
             });
             const { alert } = response.data;
             if (alert) {
-              setProctoringAlert({ open: true, message: alert });
+              setProctoringAlert(alert);
             }
           } catch (error) {
             console.error('Proctoring error:', error);
-            // Optionally, show a generic error to the user in the dialog
-            // setProctoringAlert({ open: true, message: 'Proctoring service connection lost.' });
+            setProctoringAlert('Proctoring service connection lost.');
           }
         }
       }
-    }, 5000); // Send frame every 5 seconds
+    }, 3000); // Send frame every 3 seconds
   };
 
   const handleAnswerSelect = (answerIndex) => {
@@ -173,30 +172,15 @@ const Exam = () => {
   const currentQuestionData = questions[currentQuestion];
   const progress = ((currentQuestion + 1) / questions.length) * 100;
 
-  const handleCloseAlert = () => {
-    setProctoringAlert({ open: false, message: '' });
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <Dialog
-        open={proctoringAlert.open}
-        onClose={handleCloseAlert}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
-      >
-        <DialogTitle id="alert-dialog-title">{"Proctoring Warning"}</DialogTitle>
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-            {proctoringAlert.message}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseAlert} color="primary" autoFocus>
-            Acknowledge
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {proctoringAlert && (
+        <AlertBanner
+          type="error"
+          message={proctoringAlert}
+          onClose={() => setProctoringAlert(null)}
+        />
+      )}
 
       <div className="flex h-screen">
         {/* Main content - Questions */}
