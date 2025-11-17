@@ -19,10 +19,8 @@ from app.core.proctoring_service import (
     verify_identity,
     decode_image_from_base64,
 )
+from app.services.proctoring import generate_embedding
 from app.core.proctoring_state import get_user_state
-
-# Third-party imports
-from deepface import DeepFace
 
 router = APIRouter()
 
@@ -45,34 +43,22 @@ def register_face(
     for i, image_base64 in enumerate(image_base64_list):
         image_data = decode_image_from_base64(image_base64)
         if image_data is None:
-            # This error is for a corrupted base64 string
             raise HTTPException(status_code=400, detail=f"Invalid image data received for image {i+1}.")
 
-        try:
-            # --- THE FIX IS HERE ---
-            # We are now specifying a much better face detector.
-            embedding_obj = DeepFace.represent(
-                img_path=image_data,
-                model_name="ArcFace",
-                enforce_detection=True,
-                detector_backend="retinaface"  # <--- THIS IS THE KEY CHANGE
-            )
-            # --- END OF FIX ---
-            
-            embeddings.append(embedding_obj[0]["embedding"])
-
-            if i == 0:
-                image_filename = f"{current_user.id}_{uuid.uuid4()}.jpg"
-                reference_image_path = str(UPLOAD_DIR / image_filename)
-                cv2.imwrite(reference_image_path, image_data)
+        embedding = generate_embedding(image_data)
         
-        except (ValueError, IndexError):
-            # This error is now specifically for when the detector fails.
-            # We can give the user a much more helpful message.
+        if embedding is None:
             raise HTTPException(
                 status_code=400, 
-                detail=f"Could not detect a face in image {i+1}. Please ensure your face is well-lit and not turned too far away from the camera."
+                detail=f"Could not detect a single, clear face in image {i+1}. Please ensure your face is well-lit and not turned too far away from the camera."
             )
+
+        embeddings.append(embedding)
+
+        if i == 0:
+            image_filename = f"{current_user.id}_{uuid.uuid4()}.jpg"
+            reference_image_path = str(UPLOAD_DIR / image_filename)
+            cv2.imwrite(reference_image_path, image_data)
 
     if not embeddings:
         raise HTTPException(status_code=400, detail="Face detection failed for all provided images.")
@@ -81,12 +67,12 @@ def register_face(
 
     user_face = db.query(UserFace).filter(UserFace.user_id == current_user.id).first()
     if user_face:
-        user_face.embedding_vector = average_embedding
+        user_face.embedding_vector = average_embedding.tolist()
         user_face.image_path = reference_image_path
     else:
         user_face = UserFace(
             user_id=current_user.id,
-            embedding_vector=average_embedding,
+            embedding_vector=average_embedding.tolist(),
             image_path=reference_image_path
         )
         db.add(user_face)
@@ -96,7 +82,6 @@ def register_face(
     return {"message": "Face registered successfully using multiple angles."}
 
 
-# The rest of the file (/frame endpoint) remains the same.
 @router.post("/frame")
 def frame(
     payload: FramePayload,
@@ -108,7 +93,6 @@ def frame(
     image = decode_image_from_base64(payload.image_base64)
     state = get_user_state(current_user.id, payload.exam_id)
 
-    # (Your existing debug logs are great, we'll keep them)
     print("\n" + "="*80)
     print(f"| PROCESSING FRAME at {time.strftime('%H:%M:%S')} for User: {current_user.id}, Exam: {payload.exam_id}")
     print("="*80)
@@ -118,6 +102,7 @@ def frame(
     print(f"\n[STEP 1: DETECTION]: Face check result = '{face_check_event}'")
 
     if face_check_event == "no_face":
+        event = "no_face"
         state.face_missing_frames += 1
         state.multi_face_frames = 0
         state.identity_mismatch_frames = 0
@@ -134,30 +119,14 @@ def frame(
         if not user_face:
             raise HTTPException(status_code=400, detail="No baseline face registered for this user.")
 
-        # --- START: DIAGNOSIS & FIX ---
-
-        # 1. DIAGNOSE: Let's see the type of the retrieved embedding
-        print("\n--- EMBEDDING DEBUG ---")
-        print(f"  - Type of retrieved embedding from DB: {type(user_face.embedding_vector)}")
-        
         retrieved_embedding = user_face.embedding_vector
-
-        # 2. FIX: If the type is a string, convert it back to a NumPy array.
-        if isinstance(retrieved_embedding, str):
-            print("  - Embedding is a string. Converting back to NumPy array.")
-            # Remove brackets and split by comma
-            cleaned_string = retrieved_embedding.strip('[]')
-            # Convert string numbers to float numbers and create a NumPy array
-            retrieved_embedding = np.fromstring(cleaned_string, dtype=float, sep=',')
         
-        print(f"  - Final embedding type for comparison: {type(retrieved_embedding)}")
-        print("--- END EMBEDDING DEBUG ---\n")
+        # Ensure the embedding from the DB is a list of floats
+        if not isinstance(retrieved_embedding, list):
+             raise HTTPException(status_code=500, detail="Invalid embedding format in database.")
 
-        # 3. USE THE CORRECTED EMBEDDING
         match_score = verify_identity(image, retrieved_embedding)
         
-        # --- END: DIAGNOSIS & FIX ---
-
         print(f"  - Match Score: {match_score:.4f} (Threshold: < {settings.face_match_threshold})")
         if match_score > settings.face_match_threshold:
             state.identity_mismatch_frames += 1
@@ -166,7 +135,6 @@ def frame(
             state.identity_mismatch_frames = 0
             print("  - Result: Identity MATCHED.")
 
-    # ... (The rest of the function remains exactly the same)
     print(f"\n[STATE AFTER UPDATE]: face_missing: {state.face_missing_frames}, multi_face: {state.multi_face_frames}, mismatch: {state.identity_mismatch_frames}")
     print("\n[STEP 3: ALERTING LOGIC]:")
     
