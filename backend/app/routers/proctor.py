@@ -26,7 +26,8 @@ from deepface import DeepFace
 
 router = APIRouter()
 
-UPLOAD_DIR = Path("/app/uploads")
+BASE_DIR = Path(__file__).resolve().parent.parent  # app/
+UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 @router.post("/register_face")

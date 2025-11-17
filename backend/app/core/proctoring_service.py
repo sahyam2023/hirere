@@ -3,6 +3,7 @@ import numpy as np
 from deepface import DeepFace
 import base64
 import threading
+import binascii
 
 # Import the correct distance function from the modern deepface module path.
 from deepface.modules.verification import find_cosine_distance
@@ -17,17 +18,37 @@ DEEPFACE_LOCK = threading.Lock()
 MULTI_FACE_THRESHOLD = 1
 
 def decode_image_from_base64(base64_string: str):
-    """Decodes a base64 string to a CV2 image."""
+    """Decodes a base64 data URI to a CV2 image."""
+    
+    # --- DEBUGGING: Print the start of the received string ---
+    print(f"[DEBUG] Received image string (first 60 chars): {base64_string[:60]}")
+
     try:
-        if "," in base64_string:
-            base64_string = base64_string.split(',')[1]
+        # Find the comma that separates the metadata from the data
+        # This is more robust than just splitting.
+        header, data = base64_string.split(',', 1)
         
-        image_data = base64.b64decode(base64_string)
+        # The data is now the pure base64 string
+        image_data = base64.b64decode(data)
+        
         np_arr = np.frombuffer(image_data, np.uint8)
         image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        
+        # Check if decoding to an image was successful
+        if image is None:
+            print("[ERROR] cv2.imdecode failed. The data is not a valid image format.")
+            return None
+            
         return image
-    except Exception:
-        # Return None if the base64 string is invalid or corrupted.
+
+    except (binascii.Error, ValueError) as e:
+        # This will catch errors from b64decode (like incorrect padding)
+        # or from the string split if the comma isn't found.
+        print(f"[ERROR] Failed to decode base64 string. It may be malformed. Error: {e}")
+        return None
+    except Exception as e:
+        # Catch any other unexpected errors
+        print(f"[ERROR] An unexpected error occurred in decode_image_from_base64: {e}")
         return None
 
 def check_face_presence_and_count(image):

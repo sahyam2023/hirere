@@ -15,6 +15,9 @@ app.include_router(proctor.router, prefix="/api/proctor", tags=["proctor"])
 app.include_router(submissions.router, prefix="/api/submissions", tags=["submissions"])
 app.include_router(questions.router, prefix="/api/questions", tags=["questions"])
 
+origins = [
+    "http://localhost:5173",
+]
 def check_and_add_role_column():
     inspector = inspect(engine)
     columns = [col['name'] for col in inspector.get_columns('users')]
@@ -50,7 +53,8 @@ def startup_event():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=origins,  # <--- CHANGE THIS
+    allow_credentials=True, # Important for sending cookies/auth headers
+    allow_methods=["*"],    # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],    # Allows all headers
 )
